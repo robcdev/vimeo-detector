@@ -1,0 +1,20 @@
+# Ignore everything at the root by default...
+/*
+
+# ...except the files/folders we actually want to track.
+!/README.md
+!/.gitignore
+!/scripts/
+!/videos/
+
+# Inside videos/, track the downloaded videos but not the generated
+# links list (it's just a scan result, regenerate it anytime with
+# scripts/find_vimeo_links.py).
+/videos/*.txt
+
+# Editor/tooling leftovers that shouldn't be tracked even inside
+# folders we otherwise keep.
+*.swp
+*.swo
+__pycache__/
+*.pyc
