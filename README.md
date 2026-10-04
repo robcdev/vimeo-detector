@@ -1,7 +1,7 @@
 # Vimeo link scanner & downloader
 
-Two scripts to find the Vimeo videos embedded across the saved pages in this
-project and download them.
+Three scripts to find the Vimeo videos embedded across the saved pages in
+this project, download them, and keep track of what's already done.
 
 ## Requirements
 
@@ -78,6 +78,34 @@ session to download:
   `--cookies cookies.txt`.
 - If you hit a TLS-fingerprint block, install the `curl_cffi` extra
   (`pip install -U "yt-dlp[curl-cffi]"`) and add `--impersonate chrome`.
+
+## 3. Reconcile already-downloaded videos — `scripts/reconcile_downloads.py`
+
+Closes the gap for videos that ended up in `videos/` without going through
+`download_vimeo_videos.py` — e.g. downloaded by hand with a raw `yt-dlp`
+command.
+
+```bash
+python3 scripts/reconcile_downloads.py
+```
+
+For every link still listed in `vimeo_links.txt`, it:
+
+1. Visits the video's URL (via `yt-dlp --skip-download --print`, so nothing
+   is downloaded) and reads the title that would be assigned to it.
+2. Looks in `videos/` for a file matching that video, keyed off the
+   `[<id>]` suffix yt-dlp's default naming (and our own download script's
+   output template) puts in every filename — more reliable than comparing
+   title strings, which can get sanitized or truncated differently from
+   run to run. The fetched title is still printed for context.
+3. On a match, appends the video to `videos/downloaded.txt` (same format
+   `--download-archive` uses) and removes it from `vimeo_links.txt`,
+   rewritten in the same format `find_vimeo_links.py` produces. No match,
+   or the title couldn't be read (network/auth), leaves the entry
+   untouched in the list.
+
+It asks about browser cookies the same way the download script does, since
+reading metadata for private videos needs the same auth.
 
 ## Manually merging audio + video
 
