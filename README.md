@@ -55,6 +55,16 @@ It will:
    `videos/`).
 5. Report a summary of any downloads that failed.
 
+### Tracking what's already downloaded
+
+Every completed video (downloaded **and** merged successfully) is recorded
+by ID in `videos/downloaded.txt`. On the next run, anything already listed
+there is skipped. Anything not listed — including a video left
+half-downloaded by an interrupted run — is downloaded again from scratch,
+it's never silently resumed from a partial file. `downloaded.txt` is a
+local tracking artifact, like `vimeo_links.txt`, so it isn't committed to
+the repo (see `.gitignore`).
+
 ### Notes on cookies
 
 Some videos are private/domain-restricted and need an authenticated

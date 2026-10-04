@@ -26,6 +26,15 @@ What it does, in order:
      form (plain vimeo.com/<id> links 404 for some of these videos),
      merges audio+video into a single .mp4 via ffmpeg, and reports any
      that failed at the end.
+
+Tracking what's already been downloaded:
+  A video only counts as "done" once it has fully downloaded AND merged
+  successfully. Completed video IDs are recorded in downloaded.txt, next
+  to the links file (via yt-dlp's --download-archive). On the next run,
+  anything already listed there is skipped automatically. Anything NOT
+  listed — including a video that was left half-downloaded by an
+  interrupted previous run — is downloaded again from scratch (we pass
+  --no-continue so a partial file is never silently resumed/trusted).
 """
 
 import os
@@ -41,6 +50,11 @@ import sys
 VIMEO_ID_RE = re.compile(r"(?:player\.)?vimeo\.com/(?:video/)?(\d{6,})", re.IGNORECASE)
 
 SUPPORTED_BROWSERS = ["chrome", "firefox", "edge", "brave", "opera", "vivaldi", "safari"]
+
+# Records one line per successfully *completed* (downloaded + merged)
+# video, written by yt-dlp itself via --download-archive. Lives next to
+# the links file, e.g. videos/downloaded.txt.
+ARCHIVE_FILENAME = "downloaded.txt"
 
 
 def check_yt_dlp():
@@ -146,6 +160,18 @@ def main():
         cookies_args = ["--cookies-from-browser", browser_spec]
 
     out_dir = os.path.dirname(links_file) or "."
+    archive_path = os.path.join(out_dir, ARCHIVE_FILENAME)
+    already_done = 0
+    if os.path.isfile(archive_path):
+        with open(archive_path, "r", encoding="utf-8", errors="ignore") as f:
+            already_done = sum(1 for line in f if line.strip())
+    if already_done:
+        print(
+            "{} video(s) already marked complete in {} and will be skipped.".format(
+                already_done, archive_path
+            )
+        )
+
     confirm = prompt(
         "Start downloading {} video(s) into {}? (y/n)".format(len(links), out_dir), "y"
     )
@@ -162,7 +188,16 @@ def main():
             [yt_dlp_path]
             + cookies_args
             + ffmpeg_location_args
-            + ["--merge-output-format", "mp4", "-o", output_template, url]
+            + [
+                "--download-archive",
+                archive_path,
+                "--no-continue",
+                "--merge-output-format",
+                "mp4",
+                "-o",
+                output_template,
+                url,
+            ]
         )
         result = subprocess.run(cmd)
         if result.returncode != 0:
@@ -173,6 +208,10 @@ def main():
         print("Failed links:")
         for url in failures:
             print("  " + url)
+        print(
+            "\nThese were not recorded as complete in {} — re-run this script and they'll "
+            "be retried from scratch.".format(archive_path)
+        )
 
 
 if __name__ == "__main__":
